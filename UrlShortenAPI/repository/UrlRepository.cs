@@ -1,7 +1,11 @@
 ﻿using Azure.Core;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Identity.Client;
+using System;
+using System.Net.WebSockets;
 using UrlShortenAPI.Data;
 using UrlShortenAPI.library;
 using UrlShortenAPI.Models;
@@ -18,13 +22,15 @@ namespace UrlShortenAPI.repository
         {
             _context = context;
             _configuration = configuration;
+           
         }
 
 
         public async Task<string> UrlShortCodeGenerate(string LongUrl)
         {
+    
+           var condition = Uri.IsWellFormedUriString(LongUrl, UriKind.Absolute);
 
-            var condition = LongUrl.StartsWith("Https:") || LongUrl.StartsWith("Http:") || LongUrl.StartsWith("http:") || LongUrl.StartsWith("https:");
             if (condition == true)
             {
                 var originalUrl = await _context.urls.FirstOrDefaultAsync(x => x.OriginalUrl == LongUrl);
@@ -41,10 +47,10 @@ namespace UrlShortenAPI.repository
                     };
                     _context.urls.Add(url);
                     await _context.SaveChangesAsync();
-                    return url.ShortUrl;
+                    return url.ShortCode;
                 }
 
-                return originalUrl.ShortUrl;
+                return originalUrl.ShortCode;
             }
             else
             {
@@ -53,13 +59,16 @@ namespace UrlShortenAPI.repository
 
 
         }
-        public async Task<string> RedirectingUrl(string shortUrl)
+        public async Task<string> RedirectingUrl(string shortCode)
         {
-            var revert = await _context.urls.Where(x => x.ShortUrl == shortUrl).Select(x => x.OriginalUrl).FirstOrDefaultAsync();
-            
-            if(revert != null)
+
+            var revert = await _context.urls.Where(x => x.ShortCode == shortCode).Select(x => x.OriginalUrl).FirstOrDefaultAsync();
+
+
+
+            if (revert != null)
             {
-             
+
                 return revert;
             }
             else
@@ -67,6 +76,23 @@ namespace UrlShortenAPI.repository
                 return "Not found";
             }
 
+        }
+
+       public async Task<int> CountIncrement(string longurl)
+       {
+            string cs = _configuration.GetConnectionString("UrlDB");
+            using (SqlConnection con = new SqlConnection(cs))
+            {
+                SqlCommand cmd = new SqlCommand("CountIncrement", con);
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@longurl", longurl);
+                con.Open();
+                cmd.ExecuteReader();
+                con.Close();
+            }
+            await _context.SaveChangesAsync();
+            var count = await _context.urls.Where(x => x.OriginalUrl == longurl).Select(x => x.ShortLinkCount).FirstOrDefaultAsync();
+            return count;
         }
 
     }

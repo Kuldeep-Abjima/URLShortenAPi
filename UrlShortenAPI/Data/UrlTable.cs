@@ -12,6 +12,7 @@
 
         public DateTime CreatedDate { get; set; }
 
+        public int ShortLinkCount { get; set; }
 
     }
 }

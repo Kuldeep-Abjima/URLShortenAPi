@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using System.Net;
+using UrlShortenAPI.Data;
 using UrlShortenAPI.repository;
 
 namespace UrlShortenAPI.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
     public class UrlController : ControllerBase
     {
@@ -14,20 +15,35 @@ namespace UrlShortenAPI.Controllers
         {
             _urlRepsitory = urlRepsitory;
         }
-
+        [Route("api/[controller]")]
         [HttpPost]
         public async Task<IActionResult> AddUrl(string originalUrl)
         {
             var ShortUrl = await _urlRepsitory.UrlShortCodeGenerate(originalUrl);
             return Ok(ShortUrl);
         }
-
-        [HttpGet("")]
-        public async Task<IActionResult> revertUrl(string shorturl)
+        
+        [HttpGet]
+        [Route("{shortcode}")]
+        public async Task<IActionResult> revertUrl(string shortcode)
         {
-           
-            var reverting = await _urlRepsitory.RedirectingUrl(shorturl);
-            return Redirect(reverting);
+
+            var reverting = await _urlRepsitory.RedirectingUrl(shortcode);
+            var count = await _urlRepsitory.CountIncrement(reverting);
+            
+            return RedirectPermanent(reverting);
+            
         }
+        //[HttpGet("{shorturl}")]
+        //public async Task<IActionResult> TotalCount(string shorturl)
+        //{
+
+
+        //    var result = await _urlRepsitory.TotalCount(shorturl);
+        //    return Ok(result);
+
+        //}
+
+
     }
 }
